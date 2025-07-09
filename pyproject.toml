@@ -1,9 +1,11 @@
 [project]
-name = "ugit"
+name = "mgit"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "setuptools>=80.9.0",
-]
+dependencies = []
+[project.scripts]
+mgit = "mgit.cli:main"
+[tool.uv]
+package = true
