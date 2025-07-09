@@ -6,6 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 [project.scripts]
-mgit = "mgit.cli:main"
+mgit = "cli:main"
 [tool.uv]
 package = true
