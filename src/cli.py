@@ -56,6 +56,11 @@ def parse_args():
     tag_parser.add_argument("name")
     tag_parser.add_argument("oid", default="@", type=oid, nargs="?")
 
+    branch_parser = commands.add_parser("branch")
+    branch_parser.set_defaults(func=branch)
+    branch_parser.add_argument("name")
+    branch_parser.add_argument("start_point", default="@", type=oid, nargs="?")
+
     k_parser = commands.add_parser("k")
     k_parser.set_defaults(func=k)
 
@@ -91,14 +96,12 @@ def commit(args):
 
 def log(args):
     oid = args.oid
-    while oid:
+    for oid in base.iter_commits_and_parents({args.oid}):
         commit = base.get_commit(oid)
 
         print(f"commit {oid}\n")
         print(textwrap.indent(commit.message, "    "))
         print("")
-
-        oid = commit.parent
 
 
 def checkout(args):
@@ -107,6 +110,11 @@ def checkout(args):
 
 def tag(args):
     base.create_tag(args.name, args.oid)
+
+
+def branch(args):
+    base.create_branch(args.name, args.start_point)
+    print(f"Branch {args.name} created at {args.start_point[:10]}")
 
 
 def k(args):

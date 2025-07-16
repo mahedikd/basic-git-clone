@@ -3,7 +3,7 @@ import operator
 import os
 import string
 
-from collections import namedtuple
+from collections import namedtuple, deque
 import data
 
 
@@ -104,6 +104,10 @@ def create_tag(name, oid):
     data.update_ref(f"refs/tags/{name}", oid)
 
 
+def create_branch(name, oid):
+    data.update_ref(f"refs/heads/{name}", oid)
+
+
 Commit = namedtuple("Commit", ["tree", "parent", "message"])
 
 
@@ -126,18 +130,18 @@ def get_commit(oid):
 
 
 def iter_commits_and_parents(oids):
-    oids = set(oids)
+    oids = deque(oids)
     visited = set()
 
     while oids:
-        oid = oids.pop()
+        oid = oids.popleft()
         if not oid or oid in visited:
             continue
         visited.add(oid)
         yield oid
 
         commit = get_commit(oid)
-        oids.add(commit.parent)
+        oids.appendleft(commit.parent)
 
 
 def get_oid(name):
