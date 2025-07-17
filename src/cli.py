@@ -68,7 +68,7 @@ def parse_args():
 
 
 def init(args):
-    data.init()
+    base.init()
     print(f"Initialized empty mgit repository in {os.getcwd()}/{data.GIT_DIR}")
 
 
@@ -120,10 +120,11 @@ def branch(args):
 def k(args):
     dot = "digraph commits {\n"
     oids = set()
-    for refname, ref in data.iter_refs():
+    for refname, ref in data.iter_refs(deref=False):
         dot += f'"{refname}" [shape=note]\n'
-        dot += f'"{refname}" -> "{ref}"\n'
-        oids.add(ref)
+        dot += f'"{refname}" -> "{ref.value}"\n'
+        if not ref.symbolic:
+            oids.add(ref.value)
 
     for oid in base.iter_commits_and_parents(oids):
         commit = base.get_commit(oid)
