@@ -7,11 +7,13 @@ import subprocess
 import data
 import base
 import diff
+import remoet
 
 
 def main():
-    args = parse_args()
-    args.func(args)
+    with data.change_git_dir("."):
+        args = parse_args()
+        args.func(args)
 
 
 def parse_args():
@@ -76,6 +78,23 @@ def parse_args():
     show_parser.set_defaults(func=show)
     show_parser.add_argument("oid", default="@", type=oid, nargs="?")
 
+    diff_parser = commands.add_parser("diff")
+    diff_parser.set_defaults(func=_diff)
+    diff_parser.add_argument("commit", default="@", type=oid, nargs="?")
+
+    merge_parser = commands.add_parser("merge")
+    merge_parser.set_defaults(func=merge)
+    merge_parser.add_argument("commit", type=oid)
+
+    merge_base_parser = commands.add_parser("merge-base")
+    merge_base_parser.set_defaults(func=merge_base)
+    merge_base_parser.add_argument("commit1", type=oid)
+    merge_base_parser.add_argument("commit2", type=oid)
+
+    fetch_parser = commands.add_parser("fetch")
+    fetch_parser.set_defaults(func=fetch)
+    fetch_parser.add_argument("remote")
+
     return parser.parse_args()
 
 
@@ -128,11 +147,22 @@ def show(args):
         return
     commit = base.get_commit(args.oid)
     parent_tree = None
+    if commit.parents:
+        parent_tree = base.get_commit(commit.parents[0]).tree
+
     if commit.parent:
         parent_tree = base.get_commit(commit.parent).tree
 
     _print_commit(args.oid, commit)
     result = diff.diff_trees(base.get_tree(parent_tree), base.get_tree(commit.tree))
+    sys.stdout.flush()
+    sys.stdout.buffer.write(result)
+
+
+def _diff(args):
+    tree = args.commit and base.get_commit(args.commit).tree
+
+    result = diff.diff_trees(base.get_tree(tree), base.get_working_tree())
     sys.stdout.flush()
     sys.stdout.buffer.write(result)
 
@@ -168,8 +198,8 @@ def k(args):
     for oid in base.iter_commits_and_parents(oids):
         commit = base.get_commit(oid)
         dot += f'"{oid}" [shape=box style=filled label="{oid[:10]}"]\n'
-        if commit.parent:
-            dot += f'"{oid}" -> "{commit.parent}"\n'
+        for parent in commit.parents:
+            dot += f'"{oid}" -> "{parent}"\n'
 
     dot += "}"
     print(dot)
@@ -187,6 +217,29 @@ def status(args):
     else:
         print(f"HEAD detached at {HEAD[:10]}")
 
+    MERGE_HEAD = data.get_ref("MERGE_HEAD").value
+    if MERGE_HEAD:
+        print(f"Merging with {MERGE_HEAD[:10]}")
+
+    print("\nChanges to be committed:\n")
+    HEAD_tree = HEAD and base.get_commit(HEAD).tree
+    for path, action in diff.iter_changed_files(
+        base.get_tree(HEAD_tree), base.get_working_tree()
+    ):
+        print(f"{action:>12}: {path}")
+
 
 def reset(args):
     base.reset(args.commit)
+
+
+def merge(args):
+    base.merge(args.commit)
+
+
+def merge_base(args):
+    print(base.get_merge_base(args.commit1, args.commit2))
+
+
+def fetch(args):
+    remote.fetch(args.remote)

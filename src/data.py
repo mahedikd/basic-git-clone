@@ -1,9 +1,19 @@
 import os
 import hashlib
 from collections import namedtuple
+from contextlib import contextmanager
 
 
-GIT_DIR = ".mgit"
+GIT_DIR = None
+
+
+@contextmanager
+def change_git_dir(new_dir):
+    global GIT_DIR
+    old_dir = GIT_DIR
+    GIT_DIR = f"{new_dir}/.ugit"
+    yield
+    GIT_DIR = old_dir
 
 
 def init():
@@ -29,6 +39,11 @@ def update_ref(ref, value, deref=True):
         f.write(value)
 
 
+def delete_ref(ref, deref=True):
+    ref = _get_ref_internal(ref, deref)[0]
+    os.remove(f"{GIT_DIR}/{ref}")
+
+
 def get_ref(ref, deref=True):
     return _get_ref_internal(ref, deref)[1]
 
@@ -48,14 +63,18 @@ def _get_ref_internal(ref, deref):
     return ref, RefValue(symbolic=symbolic, value=value)
 
 
-def iter_refs(deref=True):
-    refs = ["HEAD"]
+def iter_refs(prefix="", deref=True):
+    refs = ["HEAD", "MERGE_HEAD"]
     for root, _, filenames in os.walk(f"{GIT_DIR}/refs/"):
         root = os.path.relpath(root, GIT_DIR)
         refs.extend(f"{root}/{name}" for name in filenames)
 
     for refname in refs:
-        yield refname, get_ref(refname, deref=deref)
+        if not refname.startswith(prefix):
+            continue
+        ref = get_ref(refname, deref=deref)
+        if ref.value:
+            yield refname, ref
 
 
 def hash_object(data, type_="blob"):
